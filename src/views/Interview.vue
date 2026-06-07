@@ -317,12 +317,10 @@ async function startInterview() {
   try {
     const jd = jdContent.value || appStore.jdContent || '前端开发工程师职位，要求熟悉Vue、React等框架，有团队协作经验。'
     
-    const response = await api.post('/api/interview/chat', {
-      message: '开始面试',
-      session_id: null,
-      context: {
-        jd: jd
-      }
+    const response = await api.post('/api/interview/start', {
+      jd_id: "",
+      question_count: 10,
+      difficulty_ratio: "balanced"
     })
     
     sessionId.value = response.session_id
@@ -363,14 +361,10 @@ async function sendMessage() {
     const jd = jdContent.value || appStore.jdContent || ''
     
     const response = await api.post('/api/interview/chat', {
-      message: userContent,
       session_id: sessionId.value,
+      message: userContent,
       context: {
-        jd: jd,
-        history: messages.value.slice(0, -1).map(m => ({
-          role: m.role,
-          content: m.content
-        }))
+        jd: jd
       }
     })
     
