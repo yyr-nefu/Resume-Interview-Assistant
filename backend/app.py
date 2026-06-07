@@ -83,6 +83,23 @@ class InterviewAnswerRequest(BaseModel):
     question_id: str
     answer: str
 
+class InterviewChatRequest(BaseModel):
+    message: str
+    session_id: Optional[str] = None
+    context: Optional[Dict[str, Any]] = None
+
+class InterviewChatResponse(BaseModel):
+    session_id: str
+    content: str
+    stage: Optional[str] = None
+
+class InterviewStudyNotesRequest(BaseModel):
+    session_id: str
+
+class InterviewStudyNotesResponse(BaseModel):
+    session_id: str
+    content: str
+
 class InterviewCompleteRequest(BaseModel):
     session_id: str
 
@@ -137,6 +154,18 @@ async def start_interview(request: InterviewRequest):
 @app.post("/api/interview/answer")
 async def submit_answer(request: InterviewAnswerRequest):
     result = interview_engine.submit_answer(request.session_id, request.question_id, request.answer)
+    return result
+
+@app.post("/api/interview/chat", response_model=InterviewChatResponse)
+async def chat(request: InterviewChatRequest):
+    jd_content = request.context.get('jd', '') if request.context else ''
+    history = request.context.get('history', []) if request.context else None
+    result = interview_engine.chat(request.session_id or '', request.message, jd_content, history)
+    return result
+
+@app.post("/api/interview/study-notes", response_model=InterviewStudyNotesResponse)
+async def generate_study_notes(request: InterviewStudyNotesRequest):
+    result = interview_engine.generate_study_notes(request.session_id)
     return result
 
 @app.post("/api/interview/complete", response_model=InterviewReviewResponse)
