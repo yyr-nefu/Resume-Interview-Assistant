@@ -40,6 +40,8 @@ export const useAppStore = defineStore('app', () => {
   const messages = ref<Message[]>([])
   const folders = ref<Folder[]>([])
   const favorites = ref<FavoriteItem[]>([])
+  const positionType = ref<string>('dev')  // 岗位类型：dev, product, data, implementation
+  const currentJdId = ref<string>('')  // 当前JD的ID
 
   const hasJDContent = computed(() => !!jdContent.value?.text)
   const hasResumeContent = computed(() => !!resumeContent.value?.text)
@@ -53,6 +55,16 @@ export const useAppStore = defineStore('app', () => {
   const setResumeContent = (content: ResumeContent) => {
     resumeContent.value = content
     localStorage.setItem('resumeContent', JSON.stringify(content))
+  }
+
+  const setPositionType = (type: string) => {
+    positionType.value = type
+    localStorage.setItem('positionType', type)
+  }
+
+  const setCurrentJdId = (id: string) => {
+    currentJdId.value = id
+    localStorage.setItem('currentJdId', id)
   }
 
   const addMessage = (role: 'user' | 'ai', content: string) => {
@@ -142,11 +154,15 @@ export const useAppStore = defineStore('app', () => {
     messages,
     folders,
     favorites,
+    positionType,
+    currentJdId,
     hasJDContent,
     hasResumeContent,
     messageCount,
     setJDContent,
     setResumeContent,
+    setPositionType,
+    setCurrentJdId,
     addMessage,
     clearMessages,
     addFolder,

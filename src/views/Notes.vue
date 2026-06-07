@@ -120,6 +120,37 @@
               </svg>
               <span>新建文件夹</span>
             </button>
+            <button
+              @click="toggleSelectionMode"
+              :class="[
+                'px-4 py-2 rounded-lg font-medium transition-all duration-200 flex items-center gap-1.5 text-sm',
+                selectionMode
+                  ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/30'
+                  : 'bg-white/5 border border-white/10 text-slate-400 hover:text-white hover:bg-white/10'
+              ]"
+            >
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path v-if="!selectionMode" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              <span>{{ selectionMode ? '取消选择' : '多选生成笔记' }}</span>
+            </button>
+          </div>
+
+          <!-- 选择模式下的操作栏 -->
+          <div v-if="selectionMode && selectedItems.size > 0" class="mb-6 p-4 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-xl flex items-center justify-between">
+            <span class="text-white font-medium">已选择 {{ selectedItems.size }} 个回答</span>
+            <button
+              @click="generateNoteFromFavorites"
+              :disabled="isGenerating || selectedItems.size === 0"
+              class="px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg text-white font-semibold shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              <svg v-if="isGenerating" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              <span>{{ isGenerating ? '生成中...' : '生成学习笔记' }}</span>
+            </button>
           </div>
           
           <!-- Folders Grid -->
@@ -165,12 +196,36 @@
             </div>
             
             <div class="space-y-3">
-              <div 
+              <div
                 v-for="item in getFolderItems()"
                 :key="item.id"
-                class="bg-white/5 border border-white/10 rounded-xl p-5 hover:border-blue-500/30 hover:bg-white/10 transition-all duration-200"
+                :class="[
+                  'rounded-xl transition-all duration-200',
+                  selectionMode && isItemSelected(item.id)
+                    ? 'bg-blue-500/10 border-2 border-blue-500/50'
+                    : 'bg-white/5 border border-white/10 hover:border-blue-500/30 hover:bg-white/10'
+                ]"
               >
-                <div class="flex items-start justify-between gap-4">
+                <div
+                  @click="selectionMode ? toggleSelection(item.id) : (expandedItemId = expandedItemId === item.id ? null : item.id)"
+                  class="p-5 cursor-pointer flex items-start justify-between gap-4"
+                >
+                  <!-- 选择模式下的复选框 -->
+                  <div v-if="selectionMode" class="shrink-0 pt-1">
+                    <div
+                      :class="[
+                        'w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all duration-200',
+                        isItemSelected(item.id)
+                          ? 'bg-blue-500 border-blue-500'
+                          : 'border-slate-400 bg-transparent'
+                      ]"
+                    >
+                      <svg v-if="isItemSelected(item.id)" class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                  </div>
+
                   <div class="flex-1 min-w-0">
                     <div class="mb-3">
                       <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-500/10 text-blue-300 text-xs font-semibold rounded-full">
@@ -180,7 +235,7 @@
                         问题
                       </span>
                     </div>
-                    <p class="text-white font-medium mb-3 line-clamp-2">{{ item.question }}</p>
+                    <p class="text-white font-medium mb-3" :class="{ 'line-clamp-2': expandedItemId !== item.id }">{{ item.question }}</p>
                     <div class="mb-3">
                       <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 text-emerald-300 text-xs font-semibold rounded-full">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -189,15 +244,27 @@
                         回答
                       </span>
                     </div>
-                    <p class="text-slate-400 text-sm line-clamp-3">{{ item.answer }}</p>
+                    <p class="text-slate-400 text-sm whitespace-pre-wrap leading-relaxed" :class="{ 'line-clamp-3': expandedItemId !== item.id }">{{ item.answer }}</p>
                     <p class="text-slate-500 text-xs mt-3">
                       {{ formatDate(item.createdAt) }}
                     </p>
                   </div>
-                  
-                  <div class="flex flex-col gap-2">
+
+                  <div class="flex flex-col gap-2 shrink-0">
+                    <button
+                      @click.stop
+                      class="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200"
+                      title="{{ expandedItemId === item.id ? '收起' : '展开' }}"
+                    >
+                      <svg v-if="expandedItemId !== item.id" class="w-4.5 h-4.5 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                      <svg v-else class="w-4.5 h-4.5 transition-transform duration-200 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
                     <button 
-                      @click="moveItem(item)"
+                      @click.stop="moveItem(item)"
                       class="p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-200"
                       title="移动到其他文件夹"
                     >
@@ -206,13 +273,28 @@
                       </svg>
                     </button>
                     <button 
-                      @click="removeItem(item.id)"
+                      @click.stop="removeItem(item.id)"
                       class="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all duration-200"
                       title="删除"
                     >
                       <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- 展开后的操作栏 -->
+                <div v-if="expandedItemId === item.id" class="px-5 pb-5 pt-0 border-t border-white/5">
+                  <div class="flex items-center gap-3 mt-4 pt-4">
+                    <button
+                      @click.stop="copyAnswer(item.answer)"
+                      class="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-all duration-200 flex items-center gap-1.5 text-sm"
+                    >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                      </svg>
+                      <span>复制回答</span>
                     </button>
                   </div>
                 </div>
@@ -236,6 +318,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useAppStore } from '@/stores/app'
+import api from '@/utils/api'
 
 const appStore = useAppStore()
 
@@ -244,6 +327,11 @@ const isGenerating = ref(false)
 const generatedNote = ref<string | null>(null)
 const copied = ref(false)
 const selectedFolderId = ref<string | null>(null)
+const expandedItemId = ref<string | null>(null)
+
+// 多选模式
+const selectionMode = ref(false)
+const selectedItems = ref<Set<string>>(new Set())
 const folders = ref([
   { id: 'all', name: '全部回答' },
   { id: 'behavioral', name: '行为面试' },
@@ -354,6 +442,66 @@ function moveItem(item: any) {
 function removeItem(id: string) {
   if (confirm('确定要删除这个收藏的回答吗？')) {
     appStore.removeFavorite(id)
+  }
+}
+
+function copyAnswer(text: string) {
+  navigator.clipboard.writeText(text)
+}
+
+// 多选功能
+function toggleSelection(itemId: string) {
+  if (selectedItems.value.has(itemId)) {
+    selectedItems.value.delete(itemId)
+  } else {
+    selectedItems.value.add(itemId)
+  }
+  // 触发响应式更新
+  selectedItems.value = new Set(selectedItems.value)
+}
+
+function toggleSelectionMode() {
+  selectionMode.value = !selectionMode.value
+  if (!selectionMode.value) {
+    selectedItems.value.clear()
+    expandedItemId.value = null
+  }
+}
+
+function isItemSelected(itemId: string): boolean {
+  return selectedItems.value.has(itemId)
+}
+
+// 从收藏生成笔记
+async function generateNoteFromFavorites() {
+  if (selectedItems.value.size === 0) {
+    alert('请至少选择一个收藏的回答')
+    return
+  }
+
+  isGenerating.value = true
+
+  try {
+    // 获取选中的项目
+    const items = getFolderItems().filter(item => selectedItems.value.has(item.id))
+
+    const response = await api.post('/api/note/generate-from-favorites', {
+      items: items.map(item => ({
+        question: item.question,
+        answer: item.answer
+      }))
+    })
+
+    generatedNote.value = response.content || '生成失败，请重试'
+    activeTab.value = 'notes'  // 切换到笔记tab显示结果
+    selectionMode.value = false
+    selectedItems.value.clear()
+
+  } catch (error) {
+    console.error('生成笔记失败:', error)
+    alert('生成笔记失败，请稍后重试')
+  } finally {
+    isGenerating.value = false
   }
 }
 </script>

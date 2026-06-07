@@ -100,10 +100,12 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAppStore } from '@/stores/app'
 import axios from 'axios'
 import { Upload, Search, User, DocumentCopy } from '@element-plus/icons-vue'
 
 const router = useRouter()
+const appStore = useAppStore()
 
 const form = reactive({
   positionType: 'dev',
@@ -127,7 +129,7 @@ const parseJD = async () => {
     alert('请输入JD内容')
     return
   }
-  
+
   loading.value = true
   try {
     const response = await axios.post('/api/jd/parse', {
@@ -135,7 +137,18 @@ const parseJD = async () => {
       position_type: form.positionType
     })
     result.value = response.data
-    localStorage.setItem('currentJD', JSON.stringify(response.data))
+
+    // 保存到localStorage和store
+    localStorage.setItem('currentJD', JSON.stringify({
+      ...response.data,
+      jd_id: `jd_${Date.now()}`,
+      position_type: form.positionType,
+      content: form.jdContent
+    }))
+
+    // 更新store
+    appStore.setPositionType(form.positionType)
+    appStore.setCurrentJdId(`jd_${Date.now()}`)
   } catch (error) {
     console.error('解析失败:', error)
     alert('解析失败，请重试')

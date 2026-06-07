@@ -81,8 +81,13 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import axios from 'axios'
+import { useRouter } from 'vue-router'
+import { useAppStore } from '@/stores/app'
+import { resumeApi } from '@/utils/api'
 import { MagicStick, Sunny, DocumentCopy, Download } from '@element-plus/icons-vue'
+
+const router = useRouter()
+const appStore = useAppStore()
 
 const form = reactive({
   positionType: 'dev',
@@ -91,11 +96,31 @@ const form = reactive({
 
 const loading = ref(false)
 const result = ref(null)
+const currentJdId = ref('')
 
 onMounted(() => {
   const savedResume = localStorage.getItem('currentResume')
   if (savedResume) {
     form.resumeContent = savedResume
+  }
+
+  // 尝试从store或localStorage获取JD ID
+  const jdData = localStorage.getItem('currentJD')
+  if (jdData) {
+    try {
+      const parsed = JSON.parse(jdData)
+      // 如果有保存的JD ID就使用，否则使用默认值
+      currentJdId.value = parsed.jd_id || 'jd_1'
+    } catch (e) {
+      currentJdId.value = 'jd_1'
+    }
+  } else {
+    currentJdId.value = 'jd_1'
+  }
+
+  // 从store获取岗位类型（如果用户在JD解析页面选择过）
+  if (appStore.positionType) {
+    form.positionType = appStore.positionType
   }
 })
 
@@ -104,18 +129,18 @@ const optimizeResume = async () => {
     alert('请输入简历内容')
     return
   }
-  
+
   loading.value = true
   try {
-    const response = await axios.post('/api/resume/optimize', {
-      resume_content: form.resumeContent,
-      jd_id: 'jd_1',
-      position_type: form.positionType
-    })
-    result.value = response.data
+    const response = await resumeApi.optimize(
+      form.resumeContent,
+      currentJdId.value,
+      form.positionType
+    )
+    result.value = response
   } catch (error) {
     console.error('优化失败:', error)
-    alert('优化失败，请重试')
+    alert('优化失败，请重试。请确保已先进行JD解析。')
   } finally {
     loading.value = false
   }
